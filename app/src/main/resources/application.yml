@@ -4,8 +4,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://191.252.195.25:5432/tedioinfernal
-    username: evolution
-    password: Tor1t4ma2013
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -56,8 +56,8 @@ evolution:
   api:
     url: ${EVOLUTION_API_URL:http://191.252.195.25:8101}
   auth:
-    email: ${EVOLUTION_AUTH_EMAIL:your-email@example.com}
-    password: ${EVOLUTION_AUTH_PASSWORD:your-password-here}
+    email: ${EVOLUTION_AUTH_EMAIL}
+    password: ${EVOLUTION_AUTH_PASSWORD}
 
 monday:
   api:
