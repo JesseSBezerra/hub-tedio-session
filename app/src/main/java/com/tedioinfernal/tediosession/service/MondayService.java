@@ -35,12 +35,12 @@ public class MondayService {
     @Value("${monday.group.id}")
     private String groupId;
 
-    public String createTaskItem(String taskName) {
+    public String createTaskItem(String taskName, String deadline) {
         try {
-            log.info("Creating task item in Monday.com: {}", taskName);
+            log.info("Creating task item in Monday.com: {} with deadline: {}", taskName, deadline);
             
-            // Data atual no formato YYYY-MM-DD
-            String currentDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+            // Converter prazo de DD/MM/YYYY para YYYY-MM-DD (formato Monday.com)
+            String mondayDate = convertToMondayFormat(deadline);
             
             // Construir query GraphQL
             String query = String.format(
@@ -48,7 +48,7 @@ public class MondayService {
                 boardId,
                 groupId,
                 escapeGraphQL(taskName),
-                currentDate
+                mondayDate
             );
             
             MondayRequestDTO request = MondayRequestDTO.builder()
@@ -133,5 +133,28 @@ public class MondayService {
                    .replace("\"", "\\\"")
                    .replace("\n", "\\n")
                    .replace("\r", "\\r");
+    }
+    
+    /**
+     * Converte data de DD/MM/YYYY para YYYY-MM-DD (formato Monday.com)
+     */
+    private String convertToMondayFormat(String deadline) {
+        try {
+            if (deadline == null || deadline.trim().isEmpty()) {
+                // Fallback: 1 semana a partir de hoje
+                return LocalDate.now().plusWeeks(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            }
+            
+            // Parse DD/MM/YYYY
+            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            LocalDate date = LocalDate.parse(deadline, inputFormatter);
+            
+            // Format para YYYY-MM-DD
+            return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            
+        } catch (Exception e) {
+            log.warn("Failed to parse deadline '{}', using default (1 week from now)", deadline, e);
+            return LocalDate.now().plusWeeks(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
+        }
     }
 }

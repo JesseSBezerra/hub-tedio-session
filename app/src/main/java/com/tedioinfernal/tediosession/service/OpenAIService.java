@@ -18,6 +18,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
 @Slf4j
@@ -40,7 +42,7 @@ public class OpenAIService {
     private static final String OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
     private static final String OPENAI_TRANSCRIPTION_URL = "https://api.openai.com/v1/audio/transcriptions";
     
-    private static final String SYSTEM_PROMPT = "vamos criar uma historia para um card da mondey, abaixo vc ira receber um decritivo e devolver a estoria explicada da melhor forma possivel, sempre entanda que na abortdagem vamos trabalhar em como cliente eu gostaria de ter uma melhor experiencia fazendo...,ah e devolva apenas a resposta, evite qualquer forma de itaracao pois vou pegar sua resposta e ja usar no card, a resposta devera ser devolvida em formato json com 2 campos titulo e detalhe";
+    private static final String SYSTEM_PROMPT = "vamos criar uma historia para um card da mondey, abaixo vc ira receber um decritivo e devolver a estoria explicada da melhor forma possivel, sempre entanda que na abortdagem vamos trabalhar em como cliente eu gostaria de ter uma melhor experiencia fazendo...,ah e devolva apenas a resposta, evite qualquer forma de itaracao pois vou pegar sua resposta e ja usar no card, a resposta devera ser devolvida em formato json com 2 campos titulo , detalhe e prazo DD/MM/AAAA";
 
     public ImprovedTaskDTO improveTaskDescription(String userDescription) {
         try {
@@ -85,7 +87,11 @@ public class OpenAIService {
                 // Converter JSON do content para ImprovedTaskDTO
                 ImprovedTaskDTO improvedTask = objectMapper.readValue(content, ImprovedTaskDTO.class);
                 
-                log.info("Task improved - Title: {}", improvedTask.getTitulo());
+                // Verificar e aplicar prazo padrão se necessário
+                improvedTask = ensureDeadline(improvedTask);
+                
+                log.info("Task improved - Title: {}, Deadline: {}", 
+                         improvedTask.getTitulo(), improvedTask.getPrazo());
                 return improvedTask;
             }
             
@@ -96,11 +102,32 @@ public class OpenAIService {
             
             // Fallback: retornar descrição original
             log.warn("Using fallback - original description");
-            return ImprovedTaskDTO.builder()
+            ImprovedTaskDTO fallbackTask = ImprovedTaskDTO.builder()
                     .titulo("Tarefa do WhatsApp")
                     .detalhe(userDescription)
                     .build();
+            
+            return ensureDeadline(fallbackTask);
         }
+    }
+    
+    /**
+     * Garante que a tarefa tenha um prazo definido.
+     * Se o prazo não estiver presente ou for inválido, define como 1 semana a partir de hoje.
+     */
+    private ImprovedTaskDTO ensureDeadline(ImprovedTaskDTO task) {
+        if (task.getPrazo() == null || task.getPrazo().trim().isEmpty()) {
+            // Prazo não informado: definir como 1 semana a partir de hoje
+            LocalDate oneWeekFromNow = LocalDate.now().plusWeeks(1);
+            String defaultDeadline = oneWeekFromNow.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            
+            log.info("No deadline provided, setting default: {} (1 week from now)", defaultDeadline);
+            task.setPrazo(defaultDeadline);
+        } else {
+            log.info("Deadline provided by GPT: {}", task.getPrazo());
+        }
+        
+        return task;
     }
 
     public String transcribeAudio(byte[] audioData, String fileName) {

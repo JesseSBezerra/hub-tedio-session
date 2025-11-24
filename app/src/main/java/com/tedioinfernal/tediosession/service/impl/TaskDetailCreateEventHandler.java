@@ -71,12 +71,12 @@ public class TaskDetailCreateEventHandler implements EventHandlerService {
             // 1. Melhorar descrição com GPT
             log.info("Improving task description with OpenAI GPT...");
             ImprovedTaskDTO improvedTask = openAIService.improveTaskDescription(taskDetail);
-            log.info("Improved task - Title: {}, Detail length: {}", 
-                     improvedTask.getTitulo(), improvedTask.getDetalhe().length());
+            log.info("Improved task - Title: {}, Detail length: {}, Deadline: {}", 
+                     improvedTask.getTitulo(), improvedTask.getDetalhe().length(), improvedTask.getPrazo());
             
-            // 2. Criar item no Monday.com com título melhorado
-            String itemId = mondayService.createTaskItem(improvedTask.getTitulo());
-            log.info("Monday.com item created with ID: {}", itemId);
+            // 2. Criar item no Monday.com com título melhorado e prazo
+            String itemId = mondayService.createTaskItem(improvedTask.getTitulo(), improvedTask.getPrazo());
+            log.info("Monday.com item created with ID: {} and deadline: {}", itemId, improvedTask.getPrazo());
             
             // 3. Criar comentário com o detalhamento melhorado
             String updateId = mondayService.createTaskUpdate(itemId, improvedTask.getDetalhe());
