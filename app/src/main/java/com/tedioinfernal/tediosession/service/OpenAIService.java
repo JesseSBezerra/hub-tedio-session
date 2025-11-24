@@ -145,7 +145,7 @@ public class OpenAIService {
             
         } catch (Exception e) {
             log.error("Error transcribing audio", e);
-            throw new RuntimeException("Failed to transcribe audio", e);
+            throw new RuntimeException("Failed to transcribe audio!", e);
         }
     }
 
