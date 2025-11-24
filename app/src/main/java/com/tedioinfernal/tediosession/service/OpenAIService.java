@@ -7,6 +7,7 @@ import com.tedioinfernal.tediosession.dto.OpenAIResponseDTO;
 import com.tedioinfernal.tediosession.dto.TranscriptionResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,11 +28,17 @@ public class OpenAIService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     
+    @Value("${openai.api.key}")
+    private String apiKey;
+    
+    @Value("${openai.chat.model:gpt-4.1}")
+    private String chatModel;
+    
+    @Value("${openai.transcription.model:gpt-4o-transcribe}")
+    private String transcriptionModel;
+    
     private static final String OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
     private static final String OPENAI_TRANSCRIPTION_URL = "https://api.openai.com/v1/audio/transcriptions";
-    private static final String API_KEY = "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";
-    private static final String CHAT_MODEL = "gpt-4.1";
-    private static final String TRANSCRIPTION_MODEL = "gpt-4o-transcribe";
     
     private static final String SYSTEM_PROMPT = "vamos criar uma historia para um card da mondey, abaixo vc ira receber um decritivo e devolver a estoria explicada da melhor forma possivel, sempre entanda que na abortdagem vamos trabalhar em como cliente eu gostaria de ter uma melhor experiencia fazendo...,ah e devolva apenas a resposta, evite qualquer forma de itaracao pois vou pegar sua resposta e ja usar no card, a resposta devera ser devolvida em formato json com 2 campos titulo e detalhe";
 
@@ -53,7 +60,7 @@ public class OpenAIService {
             
             // Construir request
             OpenAIRequestDTO request = OpenAIRequestDTO.builder()
-                    .model(CHAT_MODEL)
+                    .model(chatModel)
                     .messages(Arrays.asList(systemMessage, userMessage))
                     .build();
             
@@ -111,12 +118,12 @@ public class OpenAIService {
             // Construir multipart form data
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", audioResource);
-            body.add("model", TRANSCRIPTION_MODEL);
+            body.add("model", transcriptionModel);
             body.add("response_format", "json");
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            headers.setBearerAuth(API_KEY);
+            headers.setBearerAuth(apiKey);
             
             HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
             
@@ -145,7 +152,7 @@ public class OpenAIService {
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(API_KEY);
+        headers.setBearerAuth(apiKey);
         return headers;
     }
 }

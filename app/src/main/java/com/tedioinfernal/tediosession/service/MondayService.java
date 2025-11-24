@@ -5,6 +5,7 @@ import com.tedioinfernal.tediosession.dto.MondayCreateUpdateResponseDTO;
 import com.tedioinfernal.tediosession.dto.MondayRequestDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -22,10 +23,17 @@ public class MondayService {
 
     private final RestTemplate restTemplate;
     
-    private static final String MONDAY_API_URL = "https://api.monday.com/v2";
-    private static final String AUTHORIZATION_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjU4OTk0NTIyMiwiYWFpIjoxMSwidWlkIjo5NjYwNDQzNSwiaWFkIjoiMjAyNS0xMS0yNFQxMzozNDo1Mi43NTBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6MzI2MDMxNTYsInJnbiI6InVzZTEifQ.x55cZY4PJhrytILeGGCoH5fo2r_G2m8tc9UiQ0rRGmQ";
-    private static final String BOARD_ID = "18387065071";
-    private static final String GROUP_ID = "topics";
+    @Value("${monday.api.url}")
+    private String mondayApiUrl;
+    
+    @Value("${monday.api.token}")
+    private String authorizationToken;
+    
+    @Value("${monday.board.id}")
+    private String boardId;
+    
+    @Value("${monday.group.id}")
+    private String groupId;
 
     public String createTaskItem(String taskName) {
         try {
@@ -37,8 +45,8 @@ public class MondayService {
             // Construir query GraphQL
             String query = String.format(
                 "mutation { create_item(board_id: %s, group_id: \"%s\", item_name: \"%s\", column_values: \"{\\\"date\\\":\\\"%s\\\"}\") { id } }",
-                BOARD_ID,
-                GROUP_ID,
+                boardId,
+                groupId,
                 escapeGraphQL(taskName),
                 currentDate
             );
@@ -51,7 +59,7 @@ public class MondayService {
             HttpEntity<MondayRequestDTO> entity = new HttpEntity<>(request, headers);
             
             ResponseEntity<MondayCreateItemResponseDTO> response = restTemplate.postForEntity(
-                    MONDAY_API_URL,
+                    mondayApiUrl,
                     entity,
                     MondayCreateItemResponseDTO.class
             );
@@ -89,7 +97,7 @@ public class MondayService {
             HttpEntity<MondayRequestDTO> entity = new HttpEntity<>(request, headers);
             
             ResponseEntity<MondayCreateUpdateResponseDTO> response = restTemplate.postForEntity(
-                    MONDAY_API_URL,
+                    mondayApiUrl,
                     entity,
                     MondayCreateUpdateResponseDTO.class
             );
@@ -111,7 +119,7 @@ public class MondayService {
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", AUTHORIZATION_TOKEN);
+        headers.set("Authorization", authorizationToken);
         headers.set("User-Agent", "TedioSession/1.0");
         return headers;
     }

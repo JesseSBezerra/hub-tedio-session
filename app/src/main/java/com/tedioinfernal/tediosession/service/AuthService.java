@@ -4,6 +4,7 @@ import com.tedioinfernal.tediosession.dto.AuthRequestDTO;
 import com.tedioinfernal.tediosession.dto.AuthResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,17 +19,22 @@ public class AuthService {
 
     private final RestTemplate restTemplate;
     
-    private static final String AUTH_URL = "http://191.252.195.25:8101/api/auth/login";
-    private static final String DEFAULT_EMAIL = "jessebezerra2@hotmail.com.br";
-    private static final String DEFAULT_PASSWORD = "5jWbv*?3teidLHp";
+    @Value("${evolution.api.url}")
+    private String evolutionApiUrl;
+    
+    @Value("${evolution.auth.email}")
+    private String authEmail;
+    
+    @Value("${evolution.auth.password}")
+    private String authPassword;
 
     public String getAuthToken() {
         try {
             log.info("Requesting authentication token");
             
             AuthRequestDTO authRequest = AuthRequestDTO.builder()
-                    .email(DEFAULT_EMAIL)
-                    .password(DEFAULT_PASSWORD)
+                    .email(authEmail)
+                    .password(authPassword)
                     .build();
             
             HttpHeaders headers = new HttpHeaders();
@@ -37,7 +43,7 @@ public class AuthService {
             HttpEntity<AuthRequestDTO> request = new HttpEntity<>(authRequest, headers);
             
             ResponseEntity<AuthResponseDTO> response = restTemplate.postForEntity(
-                    AUTH_URL, 
+                    evolutionApiUrl + "/api/auth/login", 
                     request, 
                     AuthResponseDTO.class
             );

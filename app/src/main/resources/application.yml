@@ -51,3 +51,27 @@ rabbitmq:
     name: tedio-exchange
   routing:
     key: tedio.message
+
+evolution:
+  api:
+    url: ${EVOLUTION_API_URL:http://191.252.195.25:8101}
+  auth:
+    email: ${EVOLUTION_AUTH_EMAIL:your-email@example.com}
+    password: ${EVOLUTION_AUTH_PASSWORD:your-password-here}
+
+monday:
+  api:
+    url: ${MONDAY_API_URL:https://api.monday.com/v2}
+    token: ${MONDAY_API_TOKEN:your-monday-token-here}
+  board:
+    id: ${MONDAY_BOARD_ID:18387065071}
+  group:
+    id: ${MONDAY_GROUP_ID:topics}
+
+openai:
+  api:
+    key: ${OPENAI_API_KEY:your-api-key-here}
+  chat:
+    model: ${OPENAI_CHAT_MODEL:gpt-4.1}
+  transcription:
+    model: ${OPENAI_TRANSCRIPTION_MODEL:gpt-4o-transcribe}

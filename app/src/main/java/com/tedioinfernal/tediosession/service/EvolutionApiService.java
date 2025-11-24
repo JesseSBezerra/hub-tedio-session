@@ -5,6 +5,7 @@ import com.tedioinfernal.tediosession.dto.MediaResponseDTO;
 import com.tedioinfernal.tediosession.dto.SendMessageRequestDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,8 +21,8 @@ public class EvolutionApiService {
     private final RestTemplate restTemplate;
     private final AuthService authService;
     
-    private static final String SEND_MESSAGE_URL = "http://191.252.195.25:8101/api/evolution/message";
-    private static final String GET_MEDIA_URL = "http://191.252.195.25:8101/api/evolution/media";
+    @Value("${evolution.api.url}")
+    private String evolutionApiUrl;
 
     public void sendMessage(String number, String message, Long evolutionInstanceId) {
         try {
@@ -44,7 +45,7 @@ public class EvolutionApiService {
             HttpEntity<SendMessageRequestDTO> request = new HttpEntity<>(messageRequest, headers);
             
             ResponseEntity<String> response = restTemplate.postForEntity(
-                    SEND_MESSAGE_URL, 
+                    evolutionApiUrl + "/api/evolution/message", 
                     request, 
                     String.class
             );
@@ -88,7 +89,7 @@ public class EvolutionApiService {
             HttpEntity<MediaRequestDTO> request = new HttpEntity<>(mediaRequest, headers);
             
             ResponseEntity<MediaResponseDTO> response = restTemplate.postForEntity(
-                    GET_MEDIA_URL, 
+                    evolutionApiUrl + "/api/evolution/media", 
                     request, 
                     MediaResponseDTO.class
             );
