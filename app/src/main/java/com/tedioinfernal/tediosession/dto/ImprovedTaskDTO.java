@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 public class ImprovedTaskDTO {
     private String titulo;
     private String detalhe;
-    private String prazo; // Formato DD/MM/YYYY
+    private String prazo; // Formato YYYY-MM-DD (ISO 8601)
 }

@@ -42,7 +42,7 @@ public class OpenAIService {
     private static final String OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
     private static final String OPENAI_TRANSCRIPTION_URL = "https://api.openai.com/v1/audio/transcriptions";
     
-    private static final String SYSTEM_PROMPT = "vamos criar uma historia para um card da mondey, abaixo vc ira receber um decritivo e devolver a estoria explicada da melhor forma possivel, sempre entanda que na abortdagem vamos trabalhar em como cliente eu gostaria de ter uma melhor experiencia fazendo...,ah e devolva apenas a resposta, evite qualquer forma de itaracao pois vou pegar sua resposta e ja usar no card, a resposta devera ser devolvida em formato json com 2 campos titulo , detalhe e prazo DD/MM/AAAA";
+    private static final String SYSTEM_PROMPT = "vamos criar uma historia para um card da mondey, abaixo vc ira receber um decritivo e devolver a estoria explicada da melhor forma possivel, sempre entanda que na abortdagem vamos trabalhar em como cliente eu gostaria de ter uma melhor experiencia fazendo...,ah e devolva apenas a resposta, evite qualquer forma de itaracao pois vou pegar sua resposta e ja usar no card, a resposta devera ser devolvida em formato json com 2 campos titulo , detalhe e prazo ANO(4 DIGITOS)-MES-DIA";
 
     public ImprovedTaskDTO improveTaskDescription(String userDescription) {
         try {
@@ -114,12 +114,13 @@ public class OpenAIService {
     /**
      * Garante que a tarefa tenha um prazo definido.
      * Se o prazo não estiver presente ou for inválido, define como 1 semana a partir de hoje.
+     * Formato: YYYY-MM-DD (ISO 8601 - mesmo formato do Monday.com)
      */
     private ImprovedTaskDTO ensureDeadline(ImprovedTaskDTO task) {
         if (task.getPrazo() == null || task.getPrazo().trim().isEmpty()) {
             // Prazo não informado: definir como 1 semana a partir de hoje
             LocalDate oneWeekFromNow = LocalDate.now().plusWeeks(1);
-            String defaultDeadline = oneWeekFromNow.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            String defaultDeadline = oneWeekFromNow.format(DateTimeFormatter.ISO_LOCAL_DATE);
             
             log.info("No deadline provided, setting default: {} (1 week from now)", defaultDeadline);
             task.setPrazo(defaultDeadline);

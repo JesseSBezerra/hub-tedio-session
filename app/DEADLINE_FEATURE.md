@@ -3,8 +3,10 @@
 ## 🎯 Objetivo
 
 Implementar gerenciamento inteligente de prazos para tarefas criadas no Monday.com:
-- Se o GPT retornar um prazo, usar esse prazo
+- Se o GPT retornar um prazo válido, usar esse prazo
 - Se não retornar prazo, usar **1 semana a partir de hoje** como padrão
+- Se o prazo for no passado, usar **1 semana a partir de hoje**
+- Formato unificado: **YYYY-MM-DD (ISO 8601)** - mesmo formato do Monday.com
 
 ## 🔧 Implementação
 
@@ -15,7 +17,7 @@ Implementar gerenciamento inteligente de prazos para tarefas criadas no Monday.c
 public class ImprovedTaskDTO {
     private String titulo;
     private String detalhe;
-    private String prazo; // Formato DD/MM/YYYY
+    private String prazo; // Formato YYYY-MM-DD (ISO 8601)
 }
 ```
 
@@ -32,8 +34,11 @@ private static final String SYSTEM_PROMPT =
     "a resposta, evite qualquer forma de itaracao pois vou pegar " +
     "sua resposta e ja usar no card, a resposta devera ser " +
     "devolvida em formato json com 3 campos: " +
-    "titulo, detalhe e prazo DD/MM/AAAA";
+    "titulo, detalhe e prazo ANO(4 DIGITOS)-MES-DIA";
 ```
+
+**Formato solicitado ao GPT:** `YYYY-MM-DD` (ISO 8601)  
+**Vantagem:** Mesmo formato usado pelo Monday.com, sem necessidade de conversão!
 
 ### 3. Validação de Prazo
 
@@ -43,9 +48,7 @@ private ImprovedTaskDTO ensureDeadline(ImprovedTaskDTO task) {
     if (task.getPrazo() == null || task.getPrazo().trim().isEmpty()) {
         // Prazo não informado: definir como 1 semana a partir de hoje
         LocalDate oneWeekFromNow = LocalDate.now().plusWeeks(1);
-        String defaultDeadline = oneWeekFromNow.format(
-            DateTimeFormatter.ofPattern("dd/MM/yyyy")
-        );
+        String defaultDeadline = oneWeekFromNow.format(DateTimeFormatter.ISO_LOCAL_DATE);
         
         log.info("No deadline provided, setting default: {} (1 week from now)", 
                  defaultDeadline);
@@ -58,24 +61,33 @@ private ImprovedTaskDTO ensureDeadline(ImprovedTaskDTO task) {
 }
 ```
 
-### 4. Conversão de Formato
+### 4. Validação de Prazo no Monday.com
 
-**MondayService.convertToMondayFormat()**
+**MondayService.ensureValidDeadline()**
 ```java
-private String convertToMondayFormat(String deadline) {
+private String ensureValidDeadline(String deadline) {
     try {
         if (deadline == null || deadline.trim().isEmpty()) {
             // Fallback: 1 semana a partir de hoje
+            String defaultDeadline = LocalDate.now().plusWeeks(1)
+                .format(DateTimeFormatter.ISO_LOCAL_DATE);
+            log.info("No deadline provided, using default: {}", defaultDeadline);
+            return defaultDeadline;
+        }
+        
+        // Validar formato YYYY-MM-DD
+        LocalDate date = LocalDate.parse(deadline, DateTimeFormatter.ISO_LOCAL_DATE);
+        
+        // Verificar se a data não é no passado
+        if (date.isBefore(LocalDate.now())) {
+            log.warn("Deadline '{}' is in the past, using default (1 week from now)", 
+                     deadline);
             return LocalDate.now().plusWeeks(1)
                 .format(DateTimeFormatter.ISO_LOCAL_DATE);
         }
         
-        // Parse DD/MM/YYYY
-        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        LocalDate date = LocalDate.parse(deadline, inputFormatter);
-        
-        // Format para YYYY-MM-DD (formato Monday.com)
-        return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        log.info("Using deadline: {}", deadline);
+        return deadline;
         
     } catch (Exception e) {
         log.warn("Failed to parse deadline '{}', using default (1 week from now)", 
@@ -86,6 +98,8 @@ private String convertToMondayFormat(String deadline) {
 }
 ```
 
+**Nova validação:** Verifica se a data não está no passado!
+
 ### 5. Criação de Item Atualizada
 
 **MondayService.createTaskItem()**
@@ -94,8 +108,8 @@ public String createTaskItem(String taskName, String deadline) {
     log.info("Creating task item in Monday.com: {} with deadline: {}", 
              taskName, deadline);
     
-    // Converter prazo de DD/MM/YYYY para YYYY-MM-DD (formato Monday.com)
-    String mondayDate = convertToMondayFormat(deadline);
+    // Validar e aplicar prazo padrão se necessário
+    String mondayDate = ensureValidDeadline(deadline);
     
     // Construir query GraphQL com data
     String query = String.format(
@@ -114,7 +128,7 @@ public String createTaskItem(String taskName, String deadline) {
 
 ## 📊 Fluxo de Dados
 
-### Cenário 1: GPT Retorna Prazo
+### Cenário 1: GPT Retorna Prazo Válido
 
 ```
 Usuário: "Preciso implementar login até dia 30/12/2024"
@@ -122,12 +136,12 @@ Usuário: "Preciso implementar login até dia 30/12/2024"
 GPT Response: {
     "titulo": "Implementação de Sistema de Login",
     "detalhe": "Como cliente, gostaria de...",
-    "prazo": "30/12/2024"
+    "prazo": "2024-12-30"
 }
     ↓
-ensureDeadline(): Mantém "30/12/2024"
+ensureDeadline(): Mantém "2024-12-30"
     ↓
-convertToMondayFormat(): "30/12/2024" → "2024-12-30"
+ensureValidDeadline(): Valida formato e data futura → OK
     ↓
 Monday.com: Item criado com deadline 2024-12-30
 ```
@@ -143,21 +157,37 @@ GPT Response: {
     "prazo": null
 }
     ↓
-ensureDeadline(): Define prazo = hoje + 7 dias = "01/12/2024"
+ensureDeadline(): Define prazo = hoje + 7 dias = "2024-12-01"
     ↓
-convertToMondayFormat(): "01/12/2024" → "2024-12-01"
+ensureValidDeadline(): Valida formato → OK
     ↓
 Monday.com: Item criado com deadline 2024-12-01
 ```
 
-### Cenário 3: Erro no Parse
+### Cenário 3: GPT Retorna Data no Passado
+
+```
+GPT Response: {
+    "prazo": "2024-01-01"
+}
+    ↓
+ensureDeadline(): Mantém "2024-01-01"
+    ↓
+ensureValidDeadline(): Detecta data no passado!
+    ↓
+Fallback: hoje + 7 dias = "2024-12-01"
+    ↓
+Monday.com: Item criado com deadline 2024-12-01
+```
+
+### Cenário 4: Erro no Parse
 
 ```
 GPT Response: {
     "prazo": "invalid-date"
 }
     ↓
-convertToMondayFormat(): Catch exception
+ensureValidDeadline(): Catch exception
     ↓
 Fallback: hoje + 7 dias = "2024-12-01"
     ↓
@@ -170,41 +200,59 @@ Monday.com: Item criado com deadline 2024-12-01
 ```
 INFO  - Improving task description with OpenAI GPT...
 INFO  - GPT response received
-INFO  - Deadline provided by GPT: 30/12/2024
-INFO  - Task improved - Title: Implementação de Login, Deadline: 30/12/2024
-INFO  - Creating task item in Monday.com: Implementação de Login with deadline: 30/12/2024
-INFO  - Monday.com item created with ID: 123456 and deadline: 30/12/2024
+INFO  - Deadline provided by GPT: 2024-12-30
+INFO  - Task improved - Title: Implementação de Login, Deadline: 2024-12-30
+INFO  - Creating task item in Monday.com: Implementação de Login with deadline: 2024-12-30
+INFO  - Using deadline: 2024-12-30
+INFO  - Monday.com item created with ID: 123456 and deadline: 2024-12-30
 ```
 
 ### Sem Prazo (Fallback)
 ```
 INFO  - Improving task description with OpenAI GPT...
 INFO  - GPT response received
-INFO  - No deadline provided, setting default: 01/12/2024 (1 week from now)
-INFO  - Task improved - Title: Implementação de Login, Deadline: 01/12/2024
-INFO  - Creating task item in Monday.com: Implementação de Login with deadline: 01/12/2024
-INFO  - Monday.com item created with ID: 123456 and deadline: 01/12/2024
+INFO  - No deadline provided, setting default: 2024-12-01 (1 week from now)
+INFO  - Task improved - Title: Implementação de Login, Deadline: 2024-12-01
+INFO  - Creating task item in Monday.com: Implementação de Login with deadline: 2024-12-01
+INFO  - Using deadline: 2024-12-01
+INFO  - Monday.com item created with ID: 123456 and deadline: 2024-12-01
+```
+
+### Data no Passado (Fallback)
+```
+INFO  - Deadline provided by GPT: 2024-01-01
+WARN  - Deadline '2024-01-01' is in the past, using default (1 week from now)
+INFO  - Monday.com item created with ID: 123456 and deadline: 2024-12-01
 ```
 
 ## ✅ Validações Implementadas
 
 1. **Prazo Nulo ou Vazio**
-   - Aplica prazo padrão: hoje + 7 dias
+   - Aplica prazo padrão: hoje + 7 dias (YYYY-MM-DD)
 
 2. **Formato Inválido**
-   - Tenta parse DD/MM/YYYY
+   - Tenta parse YYYY-MM-DD (ISO 8601)
    - Se falhar, aplica prazo padrão
 
-3. **Conversão para Monday.com**
-   - Converte DD/MM/YYYY → YYYY-MM-DD
-   - Garante formato correto para API
+3. **Data no Passado** ⭐ NOVO!
+   - Verifica se data < hoje
+   - Se sim, aplica prazo padrão
+   - Evita criar tarefas com deadline vencido
 
-4. **Fallback em Caso de Erro**
+4. **Formato Unificado**
+   - GPT retorna: YYYY-MM-DD
+   - Monday.com usa: YYYY-MM-DD
+   - **Sem necessidade de conversão!**
+
+5. **Fallback em Caso de Erro**
    - Sempre retorna um prazo válido
    - Nunca deixa tarefa sem deadline
 
 ## 🎯 Benefícios
 
+- ✅ **Formato Unificado**: YYYY-MM-DD em todo o fluxo (GPT → App → Monday.com)
+- ✅ **Sem Conversão**: Elimina complexidade de transformação de formatos
+- ✅ **Validação de Data Passada**: Evita criar tarefas com deadline vencido
 - ✅ **Flexibilidade**: Aceita prazo do GPT ou usa padrão
 - ✅ **Robustez**: Múltiplos níveis de fallback
 - ✅ **Rastreabilidade**: Logs detalhados de cada decisão
@@ -241,16 +289,18 @@ Expected: Fallback para hoje + 7 dias
 
 | Contexto | Formato | Exemplo |
 |----------|---------|---------|
-| **GPT Response** | DD/MM/YYYY | 30/12/2024 |
-| **Logs** | DD/MM/YYYY | 30/12/2024 |
+| **GPT Response** | YYYY-MM-DD | 2024-12-30 |
+| **Logs** | YYYY-MM-DD | 2024-12-30 |
 | **Monday.com API** | YYYY-MM-DD | 2024-12-30 |
 | **Cálculo Interno** | LocalDate | 2024-12-30 |
 
+**Vantagem:** Formato unificado ISO 8601 em todo o fluxo! 🎉
+
 ## 🔄 Próximas Melhorias
 
-1. **Validação de Data Passada**
-   - Alertar se prazo for anterior a hoje
-   - Ajustar automaticamente para hoje + 1 dia
+1. ~~**Validação de Data Passada**~~ ✅ **IMPLEMENTADO!**
+   - ✅ Detecta se prazo é anterior a hoje
+   - ✅ Ajusta automaticamente para hoje + 7 dias
 
 2. **Prazos Relativos**
    - "próxima semana" → hoje + 7 dias

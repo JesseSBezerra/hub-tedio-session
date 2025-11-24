@@ -39,8 +39,8 @@ public class MondayService {
         try {
             log.info("Creating task item in Monday.com: {} with deadline: {}", taskName, deadline);
             
-            // Converter prazo de DD/MM/YYYY para YYYY-MM-DD (formato Monday.com)
-            String mondayDate = convertToMondayFormat(deadline);
+            // Validar e aplicar prazo padrão se necessário
+            String mondayDate = ensureValidDeadline(deadline);
             
             // Construir query GraphQL
             String query = String.format(
@@ -136,21 +136,29 @@ public class MondayService {
     }
     
     /**
-     * Converte data de DD/MM/YYYY para YYYY-MM-DD (formato Monday.com)
+     * Valida e garante que o prazo seja válido no formato YYYY-MM-DD.
+     * Se inválido ou vazio, retorna 1 semana a partir de hoje.
      */
-    private String convertToMondayFormat(String deadline) {
+    private String ensureValidDeadline(String deadline) {
         try {
             if (deadline == null || deadline.trim().isEmpty()) {
                 // Fallback: 1 semana a partir de hoje
+                String defaultDeadline = LocalDate.now().plusWeeks(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                log.info("No deadline provided, using default: {}", defaultDeadline);
+                return defaultDeadline;
+            }
+            
+            // Validar formato YYYY-MM-DD
+            LocalDate date = LocalDate.parse(deadline, DateTimeFormatter.ISO_LOCAL_DATE);
+            
+            // Verificar se a data não é no passado
+            if (date.isBefore(LocalDate.now())) {
+                log.warn("Deadline '{}' is in the past, using default (1 week from now)", deadline);
                 return LocalDate.now().plusWeeks(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
             }
             
-            // Parse DD/MM/YYYY
-            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            LocalDate date = LocalDate.parse(deadline, inputFormatter);
-            
-            // Format para YYYY-MM-DD
-            return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            log.info("Using deadline: {}", deadline);
+            return deadline;
             
         } catch (Exception e) {
             log.warn("Failed to parse deadline '{}', using default (1 week from now)", deadline, e);
