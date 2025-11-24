@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  tediosession:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tediosession-app
+    ports:
+      - "8103:8103"
+    
+    # Carrega variáveis do arquivo .env
+    env_file:
+      - .env
+    
+    # Sobrescrever variáveis específicas se necessário
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8103/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+    
+    networks:
+      - tediosession-network
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  tediosession-network:
+    driver: bridge

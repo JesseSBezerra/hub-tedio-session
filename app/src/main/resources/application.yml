@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: tediosession
+
+  datasource:
+    url: jdbc:postgresql://191.252.195.25:5432/tedioinfernal
+    username: evolution
+    password: Tor1t4ma2013
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 999
+    locations: classpath:db/migration
+    validate-on-migrate: false
+    out-of-order: true
+
+  rabbitmq:
+    host: 191.252.195.25
+    port: 5672
+    username: guest
+    password: N@ruto2023
+    listener:
+      simple:
+        acknowledge-mode: auto
+        concurrency: 5
+        max-concurrency: 10
+        prefetch: 10
+
+server:
+  port: 8103
+
+rabbitmq:
+  queue:
+    name: tedio-message-consumer
+  exchange:
+    name: tedio-exchange
+  routing:
+    key: tedio.message

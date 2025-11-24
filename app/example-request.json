@@ -1,0 +1,28 @@
+{
+  "event": "MESSAGE-RECEIVED",
+  "object": {
+    "event": "messages.upsert",
+    "instance": "empresa-fracisco-sa",
+    "data": {
+      "key": {
+        "remoteJid": "558197088404@s.whatsapp.net",
+        "fromMe": true,
+        "id": "3A1C85731DCF000D47CC"
+      },
+      "pushName": "Jessé",
+      "status": "SERVER_ACK",
+      "message": {
+        "conversation": "Oi"
+      },
+      "messageType": "conversation",
+      "messageTimestamp": 1763986571,
+      "instanceId": "7fb1274e-c830-4768-a200-eafc639d1bef",
+      "source": "ios"
+    },
+    "destination": "https://44d08ddc3e3a.ngrok-free.app/api/webhook",
+    "date_time": "2025-11-24T09:16:11.415Z",
+    "sender": "558196349077@s.whatsapp.net",
+    "server_url": "http://localhost:8080",
+    "apikey": "409BC319-C394-48AA-8091-E4EE0AC081FC"
+  }
+}
